@@ -4,6 +4,36 @@ import { FireIcon, UserGroupIcon, CurrencyDollarIcon, ChartBarIcon, PhotoIcon, G
 import { motion } from "framer-motion";
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
+// Estilos globales para el scrollbar
+const scrollbarStyles = `
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #191538;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #B72C7A;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #531354;
+  }
+`;
+
+// Agregar los estilos al documento
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = scrollbarStyles;
+  document.head.appendChild(style);
+}
+
 const statsCards = [
   { title: "Active Tokens", value: "3 tokens", icon: <FireIcon className="w-8 h-8" /> },
   { title: "Total Value Locked", value: "$12,450", icon: <CurrencyDollarIcon className="w-8 h-8" /> },
@@ -120,7 +150,8 @@ const quickActions = [
 export default function MainContent() {
 
   return (
-    <div className="pr-6 pb-6 ml-64 bg-thirty min-h-screen">
+    <div className="pr-6 pb-6 ml-64 bg-thirty min-h-screen overflow-y-auto">
+      <style jsx global>{scrollbarStyles}</style>
       <div className="rounded-2xl bg-dark p-4" >
         <div className="grid grid-cols-4 gap-4 mb-4">
           {statsCards.map((stat, index) => (
