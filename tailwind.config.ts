@@ -14,6 +14,7 @@ export default {
         primary: "#B72C7A",
         secundary: "#531354",
         thirty: "#191538",
+        textSecondary: "#A8A8A8",
       },
       animation: {
         'spin-slow': 'spin 8s linear infinite',
