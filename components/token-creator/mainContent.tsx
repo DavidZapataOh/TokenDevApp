@@ -1112,7 +1112,7 @@ export default function MainContent() {
                   {/* Network badge in top left corner */}
                   <div className="absolute top-6 left-6 flex items-center gap-3 bg-dark/30 px-4 py-2 rounded-xl">
                     <Image
-                      src={`/chains/${formData.network}.png`}
+                      src={`/chains/${formData.network}.svg`}
                       alt={formData.network}
                       width={24}
                       height={24}

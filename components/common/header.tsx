@@ -1,5 +1,7 @@
 "use client";
 
+import AuthButton from "@/config/authButton";
+
 
 export default function Header() {
 
@@ -11,9 +13,7 @@ export default function Header() {
       </div>
       
       <div className="flex items-center gap-12">
-        <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-          Connect Wallet
-        </button>
+        <AuthButton />
       </div>
     </header>
   );
