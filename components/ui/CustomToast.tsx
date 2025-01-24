@@ -1,6 +1,7 @@
 import { CheckCircleIcon, ExclamationCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ReactNode } from 'react';
 
 export const toastStyles = {
   style: {
@@ -35,7 +36,7 @@ export const toastStyles = {
 };
 
 export const customToast = {
-  success: (message: string, id?: string) => 
+  success: (message: string | ReactNode, id?: string) => 
     toast.success(message, {
       id,
       duration: 5000,
@@ -43,7 +44,7 @@ export const customToast = {
       icon: toastStyles.success.icon,
     }),
 
-  error: (message: string, id?: string) => 
+  error: (message: string | ReactNode, id?: string) => 
     toast.error(message, {
       id,
       duration: 5000,
@@ -51,7 +52,7 @@ export const customToast = {
       icon: toastStyles.error.icon,
     }),
 
-  loading: (message: string, id?: string) => 
+  loading: (message: string | ReactNode, id?: string) => 
     toast.loading(message, {
       id,
       style: { ...toastStyles.style, ...toastStyles.loading.style },

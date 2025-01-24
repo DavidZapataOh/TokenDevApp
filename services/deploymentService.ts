@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { ContractGenerator } from './contractGenerator';
 import { TokenConfig } from '../types/token';
 import { customToast } from '../components/ui/CustomToast';
+import { createElement } from 'react';
 
 interface NetworkConfig {
   explorerUrl: string;
@@ -96,8 +97,7 @@ export class DeploymentService {
       const contract = await factory.deploy(
         config.tokenName,
         config.tokenSymbol,
-        ethers.parseUnits(config.initialSupply.toString(), parseInt(config.decimals)),
-        parseInt(config.decimals)
+        ethers.parseUnits(config.initialSupply.toString(), parseInt(config.decimals))
       );
 
       customToast.loading('Waiting for blockchain confirmation...', 'deploy');
@@ -105,13 +105,11 @@ export class DeploymentService {
       await contract.waitForDeployment();
       const contractAddress = await contract.getAddress();
 
-      const receipt = await contract.deploymentTransaction()?.wait(2);
+      const receipt = await contract.deploymentTransaction()?.wait(1);
       
       if (!receipt) {
         throw new Error('Error waiting for contract confirmation');
       }
-
-      customToast.success(`Token successfully deployed at ${contractAddress}`, 'deploy');
 
       const network = await ethersProvider.getNetwork();
       const chainId = Number(network.chainId);
@@ -128,7 +126,6 @@ export class DeploymentService {
             config.tokenName,
             config.tokenSymbol,
             ethers.parseUnits(config.initialSupply.toString(), parseInt(config.decimals)),
-            parseInt(config.decimals)
           ],
           networkName,
           config,
@@ -136,6 +133,20 @@ export class DeploymentService {
           chainId
         );
       }
+
+      customToast.success(
+        createElement('div', { className: 'flex flex-col gap-1' }, [
+          createElement('span', { key: 'text' }, 'Token successfully deployed!'),
+          createElement('a', {
+            key: 'link',
+            href: this.getExplorerUrl(networkName, contractAddress),
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            className: 'text-sm text-primary hover:underline'
+          }, 'View on Explorer →')
+        ]),
+        'deploy'
+      );
 
       return contractAddress;
     } catch (error: any) {
@@ -154,6 +165,18 @@ export class DeploymentService {
       420: 'optimism-goerli'         // Optimism Goerli
     };
     return networkMap[chainId] || null;
+  }
+
+  private getExplorerUrl(networkName: string, address: string): string {
+    const baseUrls: { [key: string]: string } = {
+      'sepolia': 'https://sepolia.etherscan.io',
+      'arbitrum-goerli': 'https://goerli.arbiscan.io',
+      'avalanche-fuji': 'https://testnet.snowtrace.io',
+      'polygon-mumbai': 'https://mumbai.polygonscan.com',
+      'bsc-testnet': 'https://testnet.bscscan.com',
+      'optimism-goerli': 'https://goerli-optimistic.etherscan.io'
+    };
+    return `${baseUrls[networkName]}/address/${address}`;
   }
 
   private async verifyContract(

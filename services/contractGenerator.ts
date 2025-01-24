@@ -1,4 +1,5 @@
 import { TokenConfig } from '../types/token';
+import { ethers } from 'ethers';
 
 interface CompiledContract {
   abi: any[];
@@ -47,13 +48,15 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
       contractCode += 'import "@openzeppelin/contracts/access/Ownable.sol";\n';
     } else if (config.accessControl === 'roles') {
       contractCode += 'import "@openzeppelin/contracts/access/AccessControl.sol";\n';
+    } else if (config.accessControl === 'manager') {
+      contractCode += 'import "@openzeppelin/contracts/access/manager/AccessManaged.sol";\n';
     }
 
     if (config.standardFunctions.includes('burn')) {
       contractCode += 'import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";\n';
     }
     if (config.standardFunctions.includes('pause')) {
-      contractCode += 'import "@openzeppelin/contracts/security/Pausable.sol";\n';
+      contractCode += 'import "@openzeppelin/contracts/utils/Pausable.sol";\n';
     }
     if (config.standardFunctions.includes('cap')) {
       contractCode += 'import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";\n';
@@ -65,6 +68,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
       contractCode += ', Ownable';
     } else if (config.accessControl === 'roles') {
       contractCode += ', AccessControl';
+    } else if (config.accessControl === 'manager') {
+      contractCode += ', AccessManaged';
     }
 
     if (config.standardFunctions.includes('burn')) {
@@ -81,21 +86,44 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
     constructor(
         string memory name,
         string memory symbol,
-        uint256 initialSupply,
-        uint8 decimals
+        uint256 initialSupply
     ) ERC20(name, symbol)`;
 
     if (config.standardFunctions.includes('cap')) {
-      contractCode += ` ERC20Capped(initialSupply * 2)`;
+      contractCode += ` ERC20Capped(${ethers.parseUnits(config.maxSupply!, parseInt(config.decimals))})`;
     }
     if (config.accessControl === 'ownable') {
       contractCode += ` Ownable(msg.sender)`;
+    } else if (config.accessControl === 'manager') {
+      contractCode += ` AccessManaged(msg.sender)`;
     }
 
     contractCode += ` {
-        _mint(msg.sender, initialSupply);
+        _mint(msg.sender, initialSupply);`;
+
+    if (config.accessControl === 'roles') {
+      contractCode += `
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        if (${config.standardFunctions.includes('mint')}) {
+            _grantRole(MINTER_ROLE, msg.sender);
+        }
+        if (${config.standardFunctions.includes('pause')}) {
+            _grantRole(PAUSER_ROLE, msg.sender);
+        }`;
+    }
+    
+    contractCode += `
     }`;
 
+    // Override decimals if different from 18
+    if (config.decimals !== "18") {
+      contractCode += `
+    function decimals() public pure override returns (uint8) {
+        return ${config.decimals};
+    }`;
+    }
+
+    // Add mint function based on access control
     if (config.standardFunctions.includes('mint')) {
       if (config.accessControl === 'ownable') {
         contractCode += `
@@ -109,9 +137,15 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         _mint(to, amount);
     }`;
+      } else if (config.accessControl === 'manager') {
+        contractCode += `
+    function mint(address to, uint256 amount) public restricted {
+        _mint(to, amount);
+    }`;
       }
     }
 
+    // Add pause functions
     if (config.standardFunctions.includes('pause')) {
       if (config.accessControl === 'ownable') {
         contractCode += `
@@ -133,10 +167,35 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
     function unpause() public onlyRole(PAUSER_ROLE) {
         _unpause();
     }`;
+      } else if (config.accessControl === 'manager') {
+        contractCode += `
+    function pause() public restricted {
+        _pause();
+    }
+
+    function unpause() public restricted {
+        _unpause();
+    }`;
       }
     }
 
+    if (config.standardFunctions.includes('cap')) {
+      contractCode += `
+    function _update(address from, address to, uint256 value)
+        internal
+        virtual
+        override(ERC20, ERC20Capped)
+    {
+        super._update(from, to, value);
+    }`;
+    }
+
     contractCode += '\n}';
+
+    // Log the contract code in the summary step
+    if (config.currentStep === 9) {
+      console.log('Generated Contract Code:', contractCode);
+    }
 
     return contractCode;
   }

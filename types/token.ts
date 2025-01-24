@@ -5,7 +5,8 @@ export interface TokenConfig {
   tokenSymbol: string;
   decimals: string;
   initialSupply: string;
-  accessControl: 'none' | 'ownable' | 'roles';
+  maxSupply?: string;
+  accessControl: 'none' | 'ownable' | 'roles' | 'manager';
   standardFunctions: string[];
   securityFunctions: string[];
   taxFunctions: string[];

@@ -37,6 +37,8 @@ import {
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { toast } from 'react-hot-toast';
 import { DeploymentService } from '../../services/deploymentService';
+import { customToast } from '../ui/CustomToast';
+import CapModal from '../ui/CapModal';
 
 const scrollbarStyles = `
   ::-webkit-scrollbar {
@@ -95,6 +97,7 @@ export default function MainContent() {
     presaleType: "none",
   });
   const [isDeploying, setIsDeploying] = useState(false);
+  const [isCapModalOpen, setIsCapModalOpen] = useState(false);
 
   const { user } = usePrivy();
   const { wallets } = useWallets();
@@ -368,7 +371,12 @@ export default function MainContent() {
                 {/* Down - None */}
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72">
                   <button
-                    onClick={() => setFormData(prev => ({ ...prev, accessControl: 'none' }))}
+                    onClick={() => setFormData(prev => ({ 
+                      ...prev, 
+                      accessControl: 'none',
+                      standardFunctions: prev.standardFunctions.filter(f => f !== 'mint' && f !== 'cap' && f !== 'pause'),
+                      maxSupply: undefined
+                    }))}
                     className={`w-full p-6 rounded-xl border-2 transition-all ${
                       formData.accessControl === 'none'
                         ? "border-primary bg-primary/20"
@@ -498,70 +506,155 @@ export default function MainContent() {
                   </button>
                 </div>
 
-                {/* Down - Cappable */}
+                {/* Down - Mint */}
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72">
-                  <button
-                    onClick={() => {
-                      const newStandardFunctions = formData.standardFunctions.includes('cappable')
-                        ? formData.standardFunctions.filter(f => f !== 'cappable')
-                        : [...formData.standardFunctions, 'cappable'];
-                      setFormData(prev => ({ ...prev, standardFunctions: newStandardFunctions }));
-                    }}
-                    className={`w-full p-6 rounded-xl border-2 transition-all ${
-                      formData.standardFunctions.includes('cappable')
-                        ? "border-primary bg-primary/20"
-                        : "border-secundary bg-thirty hover:border-primary/50"
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      <StopIcon className={`w-12 h-12 ${formData.standardFunctions.includes('cappable') ? 'text-primary' : 'text-light'}`} />
-                      <span className="text-light font-medium">Cappable</span>
-                    </div>
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        if (formData.accessControl === 'none') {
+                          customToast.error(
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium">Access Control Required</span>
+                              <span className="text-sm">Please select Ownable, Roles, or Manager in Access Control to enable minting.</span>
+                            </div>
+                          );
+                          return;
+                        }
+                        const newStandardFunctions = formData.standardFunctions.includes('mint')
+                          ? formData.standardFunctions.filter(f => f !== 'mint')
+                          : [...formData.standardFunctions, 'mint'];
+                        setFormData(prev => ({ ...prev, standardFunctions: newStandardFunctions }));
+                      }}
+                      className={`w-full p-6 rounded-xl border-2 transition-all ${
+                        formData.accessControl === 'none'
+                          ? "border-secundary bg-thirty/50 opacity-50 cursor-not-allowed"
+                          : formData.standardFunctions.includes('mint')
+                          ? "border-primary bg-primary/20"
+                          : "border-secundary bg-thirty hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <PlusCircleIcon className={`w-12 h-12 ${
+                          formData.accessControl === 'none'
+                            ? 'text-textSecondary'
+                            : formData.standardFunctions.includes('mint')
+                            ? 'text-primary'
+                            : 'text-light'
+                        }`} />
+                        <span className="text-light font-medium">Mint</span>
+                      </div>
+                    </button>
+                    {formData.accessControl === 'none' && (
+                      <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-full">
+                        <p className="text-textSecondary text-sm text-center">
+                          Requires Access Control
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Left - Mint */}
+                {/* Left - Pause */}
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-72 -translate-x-24">
-                  <button
-                    onClick={() => {
-                      const newStandardFunctions = formData.standardFunctions.includes('mint')
-                        ? formData.standardFunctions.filter(f => f !== 'mint')
-                        : [...formData.standardFunctions, 'mint'];
-                      setFormData(prev => ({ ...prev, standardFunctions: newStandardFunctions }));
-                    }}
-                    className={`w-full p-6 rounded-xl border-2 transition-all ${
-                      formData.standardFunctions.includes('mint')
-                        ? "border-primary bg-primary/20"
-                        : "border-secundary bg-thirty hover:border-primary/50"
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      <PlusCircleIcon className={`w-12 h-12 ${formData.standardFunctions.includes('mint') ? 'text-primary' : 'text-light'}`} />
-                      <span className="text-light font-medium">Mint</span>
-                    </div>
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        if (formData.accessControl === 'none') {
+                          customToast.error(
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium">Access Control Required</span>
+                              <span className="text-sm">Please select Ownable, Roles, or Manager in Access Control to enable pause.</span>
+                            </div>
+                          );
+                          return;
+                        }
+                        const newStandardFunctions = formData.standardFunctions.includes('pause')
+                          ? formData.standardFunctions.filter(f => f !== 'pause')
+                          : [...formData.standardFunctions, 'pause'];
+                        setFormData(prev => ({ ...prev, standardFunctions: newStandardFunctions }));
+                      }}
+                      className={`w-full p-6 rounded-xl border-2 transition-all ${
+                        formData.accessControl === 'none'
+                          ? "border-secundary bg-thirty/50 opacity-50 cursor-not-allowed"
+                          : formData.standardFunctions.includes('pause')
+                          ? "border-primary bg-primary/20"
+                          : "border-secundary bg-thirty hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <PauseIcon className={`w-12 h-12 ${
+                          formData.accessControl === 'none'
+                            ? 'text-textSecondary'
+                            : formData.standardFunctions.includes('pause')
+                            ? 'text-primary'
+                            : 'text-light'
+                        }`} />
+                        <span className="text-light font-medium">Pause</span>
+                      </div>
+                    </button>
+                    {formData.accessControl === 'none' && (
+                      <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-full">
+                        <p className="text-textSecondary text-sm text-center">
+                          Requires Access Control
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Right - Pausable */}
+                {/* Right - Cap */}
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-72 translate-x-24">
-                  <button
-                    onClick={() => {
-                      const newStandardFunctions = formData.standardFunctions.includes('pausable')
-                        ? formData.standardFunctions.filter(f => f !== 'pausable')
-                        : [...formData.standardFunctions, 'pausable'];
-                      setFormData(prev => ({ ...prev, standardFunctions: newStandardFunctions }));
-                    }}
-                    className={`w-full p-6 rounded-xl border-2 transition-all ${
-                      formData.standardFunctions.includes('pausable')
-                        ? "border-primary bg-primary/20"
-                        : "border-secundary bg-thirty hover:border-primary/50"
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      <PauseIcon className={`w-12 h-12 ${formData.standardFunctions.includes('pausable') ? 'text-primary' : 'text-light'}`} />
-                      <span className="text-light font-medium">Pausable</span>
-                    </div>
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        if (!formData.standardFunctions.includes('mint')) {
+                          customToast.error(
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium">Mint Function Required</span>
+                              <span className="text-sm">Cap only works with mint function. Please enable mint first.</span>
+                            </div>
+                          );
+                          return;
+                        }
+                        
+                        if (formData.standardFunctions.includes('cap')) {
+                          setFormData(prev => ({
+                            ...prev,
+                            standardFunctions: prev.standardFunctions.filter(f => f !== 'cap'),
+                            maxSupply: undefined
+                          }));
+                          return;
+                        }
+
+                        setIsCapModalOpen(true);
+                      }}
+                      className={`w-full p-6 rounded-xl border-2 transition-all ${
+                        !formData.standardFunctions.includes('mint')
+                          ? "border-secundary bg-thirty/50 opacity-50 cursor-not-allowed"
+                          : formData.standardFunctions.includes('cap')
+                          ? "border-primary bg-primary/20"
+                          : "border-secundary bg-thirty hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <StopIcon className={`w-12 h-12 ${
+                          !formData.standardFunctions.includes('mint')
+                            ? 'text-textSecondary'
+                            : formData.standardFunctions.includes('cap')
+                            ? 'text-primary'
+                            : 'text-light'
+                        }`} />
+                        <span className="text-light font-medium">Cap</span>
+                      </div>
+                    </button>
+                    {!formData.standardFunctions.includes('mint') && (
+                      <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-full">
+                        <p className="text-textSecondary text-sm text-center">
+                          Requires Mint Function
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Decorative rings */}
@@ -1306,6 +1399,18 @@ export default function MainContent() {
           )}
         </div>
       </motion.div>
+      <CapModal
+        isOpen={isCapModalOpen}
+        onClose={() => setIsCapModalOpen(false)}
+        onConfirm={(maxSupply) => {
+          setFormData(prev => ({
+            ...prev,
+            standardFunctions: [...prev.standardFunctions, 'cap'],
+            maxSupply: maxSupply
+          }));
+        }}
+        initialSupply={formData.initialSupply}
+      />
     </div>
   );
 }
