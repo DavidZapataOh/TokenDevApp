@@ -121,11 +121,9 @@ export default function MainContent() {
 
       const tokenAddress = await deploymentService.deployToken(formData, activeWallet);
 
-      toast.success(`Token desplegado exitosamente en ${tokenAddress}`);
 
     } catch (error) {
       console.error('Error al desplegar el token:', error);
-      toast.error('Error al desplegar el token. Por favor, intenta de nuevo.');
     } finally {
       setIsDeploying(false);
     }
@@ -1293,7 +1291,7 @@ export default function MainContent() {
                     {isDeploying ? (
                       <>
                         <ArrowPathIcon className="w-6 h-6 animate-spin" />
-                        <span className="font-medium">Desplegando...</span>
+                        <span className="font-medium">Deploying...</span>
                       </>
                     ) : (
                       <>

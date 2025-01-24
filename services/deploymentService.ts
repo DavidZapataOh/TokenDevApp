@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { ContractGenerator } from './contractGenerator';
 import { TokenConfig } from '../types/token';
+import { customToast } from '../components/ui/CustomToast';
 
 interface NetworkConfig {
   explorerUrl: string;
@@ -83,9 +84,14 @@ export class DeploymentService {
       const provider = await wallet.getEthereumProvider();
       const ethersProvider = new ethers.BrowserProvider(provider);
       const signer = await ethersProvider.getSigner();
+      
+      customToast.loading('Preparing token deployment...', 'deploy');
+      
       const sourceCode = await this.contractGenerator.generateContractSource(config);
       const { abi, bytecode } = await this.contractGenerator.generateContract(config);
 
+      customToast.loading('Deploying token... Please confirm the transaction', 'deploy');
+      
       const factory = new ethers.ContractFactory(abi, bytecode, signer);
       const contract = await factory.deploy(
         config.tokenName,
@@ -94,20 +100,25 @@ export class DeploymentService {
         parseInt(config.decimals)
       );
 
+      customToast.loading('Waiting for blockchain confirmation...', 'deploy');
+      
       await contract.waitForDeployment();
       const contractAddress = await contract.getAddress();
 
       const receipt = await contract.deploymentTransaction()?.wait(2);
       
       if (!receipt) {
-        throw new Error('Error esperando la confirmación del contrato');
+        throw new Error('Error waiting for contract confirmation');
       }
+
+      customToast.success(`Token successfully deployed at ${contractAddress}`, 'deploy');
 
       const network = await ethersProvider.getNetwork();
       const chainId = Number(network.chainId);
       const networkName = this.getNetworkNameByChainId(chainId);
 
       if (networkName && NETWORK_CONFIGS[networkName]) {
+        customToast.loading('Starting contract verification...', 'verify');
         await new Promise(resolve => setTimeout(resolve, 30000));
         
         await this.verifyContract(
@@ -127,8 +138,8 @@ export class DeploymentService {
       }
 
       return contractAddress;
-    } catch (error) {
-      console.error('Error al desplegar el token:', error);
+    } catch (error: any) {
+      customToast.error(`Error: ${error.message}`, 'deploy');
       throw error;
     }
   }
@@ -157,7 +168,7 @@ export class DeploymentService {
     try {
       const networkConfig = NETWORK_CONFIGS[network];
       if (!networkConfig) {
-        throw new Error('Red no soportada para verificación');
+        throw new Error('Network not supported for verification');
       }
 
       const flattenedCode = await this.contractGenerator.getFlattenedSourceCode(sourceCode);
@@ -212,16 +223,17 @@ export class DeploymentService {
         const maxAttempts = 10;
 
         while (!verificationComplete && attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 5000)); 
+          customToast.loading('Verifying contract...', 'verify');
+          await new Promise(resolve => setTimeout(resolve, 5000));
 
           const checkResponse = await fetch(`${networkConfig.explorerUrl}?apikey=${networkConfig.apiKey}&module=contract&action=checkverifystatus&guid=${guid}`);
           const checkResult = await checkResponse.json();
 
           if (checkResult.result === 'Pass - Verified') {
-            console.log(`Contrato verificado exitosamente en ${networkConfig.name}`);
+            customToast.success(`Contract successfully verified on ${networkConfig.name}`, 'verify');
             verificationComplete = true;
           } else if (checkResult.result.includes('Fail')) {
-            console.error(`Error en la verificación en ${networkConfig.name}:`, checkResult.result);
+            customToast.error(`Verification error: ${checkResult.result}`, 'verify');
             verificationComplete = true;
           }
 
@@ -229,13 +241,13 @@ export class DeploymentService {
         }
 
         if (!verificationComplete) {
-          console.error(`Tiempo de espera agotado para la verificación en ${networkConfig.name}`);
+          customToast.error(`Verification timeout`, 'verify');
         }
       } else {
-        console.error(`Error al enviar la verificación en ${networkConfig.name}:`, submitResult.result);
+        customToast.error(`Verification submission error: ${submitResult.result}`, 'verify');
       }
-    } catch (error) {
-      console.error('Error al verificar el contrato:', error);
+    } catch (error: any) {
+      customToast.error(`Verification error: ${error.message}`, 'verify');
     }
   }
 }
