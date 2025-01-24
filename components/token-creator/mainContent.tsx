@@ -34,6 +34,9 @@ import {
   PresentationChartLineIcon,
   HashtagIcon,
 } from "@heroicons/react/24/solid";
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { toast } from 'react-hot-toast';
+import { DeploymentService } from '../../services/deploymentService';
 
 const scrollbarStyles = `
   ::-webkit-scrollbar {
@@ -91,6 +94,11 @@ export default function MainContent() {
     upgradeability: "none",
     presaleType: "none",
   });
+  const [isDeploying, setIsDeploying] = useState(false);
+
+  const { user } = usePrivy();
+  const { wallets } = useWallets();
+  const activeWallet = wallets[0]; 
 
   const handleNext = () => {
     setCurrentStep(prev => prev + 1);
@@ -98,6 +106,29 @@ export default function MainContent() {
 
   const handleBack = () => {
     setCurrentStep(prev => prev - 1);
+  };
+
+  const handleDeploy = async () => {
+    if (!activeWallet) {
+      toast.error('Por favor, conecta tu wallet primero');
+      return;
+    }
+
+    try {
+      setIsDeploying(true);
+      
+      const deploymentService = new DeploymentService();
+
+      const tokenAddress = await deploymentService.deployToken(formData, activeWallet);
+
+      toast.success(`Token desplegado exitosamente en ${tokenAddress}`);
+
+    } catch (error) {
+      console.error('Error al desplegar el token:', error);
+      toast.error('Error al desplegar el token. Por favor, intenta de nuevo.');
+    } finally {
+      setIsDeploying(false);
+    }
   };
 
   return (
@@ -1109,8 +1140,8 @@ export default function MainContent() {
               
               <div className="max-w-5xl mx-auto">
                 <div className="bg-thirty rounded-3xl border-2 border-primary/30 overflow-hidden flex relative">
-                  {/* Network badge in top left corner */}
-                  <div className="absolute top-6 left-6 flex items-center gap-3 bg-dark/30 px-4 py-2 rounded-xl">
+                  {/* Network badge in top right corner */}
+                  <div className="absolute top-6 right-6 flex items-center gap-3 bg-dark/30 px-4 py-2 rounded-xl">
                     <Image
                       src={`/chains/${formData.network}.svg`}
                       alt={formData.network}
@@ -1179,14 +1210,8 @@ export default function MainContent() {
                           <span className="text-primary capitalize">{formData.accessControl}</span>
                         </div>
 
-                        {/* Upgradeability info */}
-                        <div className="bg-dark/20 rounded-xl p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <ArrowPathRoundedSquareIcon className="w-6 h-6 text-primary" />
-                            <h4 className="text-light font-medium">Upgradeability</h4>
-                          </div>
-                          <span className="text-primary capitalize">{formData.upgradeability}</span>
-                        </div>
+                        {/* Empty space */}
+                        <div></div>
 
                         {/* Presale info */}
                         <div className="bg-dark/20 rounded-xl p-4">
@@ -1195,6 +1220,15 @@ export default function MainContent() {
                             <h4 className="text-light font-medium">Presale Type</h4>
                           </div>
                           <span className="text-primary uppercase">{formData.presaleType}</span>
+                        </div>
+
+                        {/* Upgradeability info */}
+                        <div className="bg-dark/20 rounded-xl p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <ArrowPathRoundedSquareIcon className="w-6 h-6 text-primary" />
+                            <h4 className="text-light font-medium">Upgradeability</h4>
+                          </div>
+                          <span className="text-primary capitalize">{formData.upgradeability}</span>
                         </div>
                       </div>
 
@@ -1252,11 +1286,21 @@ export default function MainContent() {
                     </div>
                   </button>
                   <button
-                    onClick={() => {/* Token generation logic */}}
-                    className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 flex items-center gap-3"
+                    onClick={handleDeploy}
+                    disabled={isDeploying}
+                    className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <RocketLaunchIcon className="w-6 h-6" />
-                    <span className="font-medium">Deploy Token</span>
+                    {isDeploying ? (
+                      <>
+                        <ArrowPathIcon className="w-6 h-6 animate-spin" />
+                        <span className="font-medium">Desplegando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RocketLaunchIcon className="w-6 h-6" />
+                        <span className="font-medium">Deploy Token</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
