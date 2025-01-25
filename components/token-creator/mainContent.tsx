@@ -39,6 +39,7 @@ import { toast } from 'react-hot-toast';
 import { DeploymentService } from '../../services/deploymentService';
 import { customToast } from '../ui/CustomToast';
 import CapModal from '../ui/CapModal';
+import SecurityModal from '../ui/SecurityModal';
 
 const scrollbarStyles = `
   ::-webkit-scrollbar {
@@ -98,6 +99,8 @@ export default function MainContent() {
   });
   const [isDeploying, setIsDeploying] = useState(false);
   const [isCapModalOpen, setIsCapModalOpen] = useState(false);
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+  const [securityModalType, setSecurityModalType] = useState<'antiwhale' | 'antibot' | 'blacklist' | 'allowlist'>('antiwhale');
 
   const { user } = usePrivy();
   const { wallets } = useWallets();
@@ -716,24 +719,48 @@ export default function MainContent() {
                   </div>
                 </div>
 
-                {/* Top - Antisnipper */}
+                {/* Top - Anti-whale */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72">
                   <button
                     onClick={() => {
-                      const newSecurityFunctions = formData.securityFunctions.includes('antisnipper')
-                        ? formData.securityFunctions.filter(f => f !== 'antisnipper')
-                        : [...formData.securityFunctions, 'antisnipper'];
-                      setFormData(prev => ({ ...prev, securityFunctions: newSecurityFunctions }));
+                      if (formData.accessControl === 'none') {
+                        customToast.error(
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">Access Control Required</span>
+                            <span className="text-sm">Please select Ownable, Roles, or Manager in Access Control to enable Anti-whale.</span>
+                          </div>
+                        );
+                        return;
+                      }
+                      if (formData.securityFunctions.includes('antiwhale')) {
+                        setFormData(prev => ({
+                          ...prev,
+                          securityFunctions: prev.securityFunctions.filter(f => f !== 'antiwhale'),
+                          maxHolderLimit: undefined,
+                          maxTransactionAmount: undefined
+                        }));
+                        return;
+                      }
+                      setSecurityModalType('antiwhale');
+                      setIsSecurityModalOpen(true);
                     }}
                     className={`w-full p-6 rounded-xl border-2 transition-all ${
-                      formData.securityFunctions.includes('antisnipper')
+                      formData.accessControl === 'none'
+                        ? "border-secundary bg-thirty/50 opacity-50 cursor-not-allowed"
+                        : formData.securityFunctions.includes('antiwhale')
                         ? "border-primary bg-primary/20"
                         : "border-secundary bg-thirty hover:border-primary/50"
                     }`}
                   >
                     <div className="flex flex-col items-center gap-3">
-                      <ShieldCheckIcon className={`w-12 h-12 ${formData.securityFunctions.includes('antisnipper') ? 'text-primary' : 'text-light'}`} />
-                      <span className="text-light font-medium">Antisnipper</span>
+                      <NoSymbolIcon className={`w-12 h-12 ${
+                        formData.accessControl === 'none'
+                          ? 'text-textSecondary'
+                          : formData.securityFunctions.includes('antiwhale')
+                          ? 'text-primary'
+                          : 'text-light'
+                      }`} />
+                      <span className="text-light font-medium">Anti-whale</span>
                     </div>
                   </button>
                 </div>
@@ -742,19 +769,36 @@ export default function MainContent() {
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72">
                   <button
                     onClick={() => {
+                      if (formData.accessControl === 'none') {
+                        customToast.error(
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">Access Control Required</span>
+                            <span className="text-sm">Please select Ownable, Roles, or Manager in Access Control to enable Allowlist.</span>
+                          </div>
+                        );
+                        return;
+                      }
                       const newSecurityFunctions = formData.securityFunctions.includes('allowlist')
                         ? formData.securityFunctions.filter(f => f !== 'allowlist')
                         : [...formData.securityFunctions, 'allowlist'];
                       setFormData(prev => ({ ...prev, securityFunctions: newSecurityFunctions }));
                     }}
                     className={`w-full p-6 rounded-xl border-2 transition-all ${
-                      formData.securityFunctions.includes('allowlist')
+                      formData.accessControl === 'none'
+                        ? "border-secundary bg-thirty/50 opacity-50 cursor-not-allowed"
+                        : formData.securityFunctions.includes('allowlist')
                         ? "border-primary bg-primary/20"
                         : "border-secundary bg-thirty hover:border-primary/50"
                     }`}
                   >
                     <div className="flex flex-col items-center gap-3">
-                      <UserPlusIcon className={`w-12 h-12 ${formData.securityFunctions.includes('allowlist') ? 'text-primary' : 'text-light'}`} />
+                      <UserPlusIcon className={`w-12 h-12 ${
+                        formData.accessControl === 'none'
+                          ? 'text-textSecondary'
+                          : formData.securityFunctions.includes('allowlist')
+                          ? 'text-primary'
+                          : 'text-light'
+                      }`} />
                       <span className="text-light font-medium">Allowlist</span>
                     </div>
                   </button>
@@ -764,20 +808,43 @@ export default function MainContent() {
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-72 -translate-x-24">
                   <button
                     onClick={() => {
-                      const newSecurityFunctions = formData.securityFunctions.includes('antibot')
-                        ? formData.securityFunctions.filter(f => f !== 'antibot')
-                        : [...formData.securityFunctions, 'antibot'];
-                      setFormData(prev => ({ ...prev, securityFunctions: newSecurityFunctions }));
+                      if (formData.accessControl === 'none') {
+                        customToast.error(
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">Access Control Required</span>
+                            <span className="text-sm">Please select Ownable, Roles, or Manager in Access Control to enable Anti-bot.</span>
+                          </div>
+                        );
+                        return;
+                      }
+                      if (formData.securityFunctions.includes('antibot')) {
+                        setFormData(prev => ({
+                          ...prev,
+                          securityFunctions: prev.securityFunctions.filter(f => f !== 'antibot'),
+                          tradingCooldown: undefined
+                        }));
+                        return;
+                      }
+                      setSecurityModalType('antibot');
+                      setIsSecurityModalOpen(true);
                     }}
                     className={`w-full p-6 rounded-xl border-2 transition-all ${
-                      formData.securityFunctions.includes('antibot')
+                      formData.accessControl === 'none'
+                        ? "border-secundary bg-thirty/50 opacity-50 cursor-not-allowed"
+                        : formData.securityFunctions.includes('antibot')
                         ? "border-primary bg-primary/20"
                         : "border-secundary bg-thirty hover:border-primary/50"
                     }`}
                   >
                     <div className="flex flex-col items-center gap-3">
-                      <NoSymbolIcon className={`w-12 h-12 ${formData.securityFunctions.includes('antibot') ? 'text-primary' : 'text-light'}`} />
-                      <span className="text-light font-medium">Antibot</span>
+                      <NoSymbolIcon className={`w-12 h-12 ${
+                        formData.accessControl === 'none'
+                          ? 'text-textSecondary'
+                          : formData.securityFunctions.includes('antibot')
+                          ? 'text-primary'
+                          : 'text-light'
+                      }`} />
+                      <span className="text-light font-medium">Anti-bot</span>
                     </div>
                   </button>
                 </div>
@@ -786,19 +853,36 @@ export default function MainContent() {
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-72 translate-x-24">
                   <button
                     onClick={() => {
+                      if (formData.accessControl === 'none') {
+                        customToast.error(
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">Access Control Required</span>
+                            <span className="text-sm">Please select Ownable, Roles, or Manager in Access Control to enable Blacklist.</span>
+                          </div>
+                        );
+                        return;
+                      }
                       const newSecurityFunctions = formData.securityFunctions.includes('blacklist')
                         ? formData.securityFunctions.filter(f => f !== 'blacklist')
                         : [...formData.securityFunctions, 'blacklist'];
                       setFormData(prev => ({ ...prev, securityFunctions: newSecurityFunctions }));
                     }}
                     className={`w-full p-6 rounded-xl border-2 transition-all ${
-                      formData.securityFunctions.includes('blacklist')
+                      formData.accessControl === 'none'
+                        ? "border-secundary bg-thirty/50 opacity-50 cursor-not-allowed"
+                        : formData.securityFunctions.includes('blacklist')
                         ? "border-primary bg-primary/20"
                         : "border-secundary bg-thirty hover:border-primary/50"
                     }`}
                   >
                     <div className="flex flex-col items-center gap-3">
-                      <UserGroupIcon className={`w-12 h-12 ${formData.securityFunctions.includes('blacklist') ? 'text-primary' : 'text-light'}`} />
+                      <UserGroupIcon className={`w-12 h-12 ${
+                        formData.accessControl === 'none'
+                          ? 'text-textSecondary'
+                          : formData.securityFunctions.includes('blacklist')
+                          ? 'text-primary'
+                          : 'text-light'
+                      }`} />
                       <span className="text-light font-medium">Blacklist</span>
                     </div>
                   </button>
@@ -1410,6 +1494,24 @@ export default function MainContent() {
           }));
         }}
         initialSupply={formData.initialSupply}
+      />
+      <SecurityModal
+        isOpen={isSecurityModalOpen}
+        onClose={() => setIsSecurityModalOpen(false)}
+        onConfirm={(values) => {
+          setFormData(prev => ({
+            ...prev,
+            securityFunctions: [...prev.securityFunctions, securityModalType],
+            ...values
+          }));
+        }}
+        title={
+          securityModalType === 'antiwhale' ? 'Configure Anti-whale' :
+          securityModalType === 'antibot' ? 'Configure Anti-bot' :
+          securityModalType === 'blacklist' ? 'Configure Blacklist' :
+          'Configure Allowlist'
+        }
+        type={securityModalType}
       />
     </div>
   );

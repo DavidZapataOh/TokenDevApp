@@ -12,4 +12,7 @@ export interface TokenConfig {
   taxFunctions: string[];
   upgradeability: 'none' | 'transparent' | 'uups';
   presaleType: 'none' | 'ico' | 'ido' | 'launchpad';
+  maxHolderLimit?: string;
+  maxTransactionAmount?: string;
+  tradingCooldown?: string; // en segundos
 } 

@@ -62,6 +62,13 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
       contractCode += 'import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";\n';
     }
 
+    if (config.securityFunctions.includes('antiwhale') || 
+        config.securityFunctions.includes('antibot') || 
+        config.securityFunctions.includes('blacklist') || 
+        config.securityFunctions.includes('allowlist')) {
+      contractCode += 'import "@openzeppelin/contracts/utils/Context.sol";\n';
+    }
+
     contractCode += `\ncontract ${contractName.toUpperCase()} is ERC20`;
     
     if (config.accessControl === 'ownable') {
@@ -112,6 +119,12 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
         }`;
     }
     
+    if (config.securityFunctions.includes('allowlist')) {
+      contractCode += `
+        _allowlist[msg.sender] = true;
+        emit AllowlistUpdated(msg.sender, true);`;
+    }
+
     contractCode += `
     }`;
 
@@ -186,6 +199,109 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
         virtual
         override(ERC20, ERC20Capped)
     {
+        super._update(from, to, value);
+    }`;
+    }
+
+    if (config.securityFunctions.includes('antiwhale')) {
+      contractCode += `
+    uint256 public maxHolderLimit = ${ethers.parseUnits(config.maxHolderLimit!, parseInt(config.decimals))};
+    uint256 public maxTransactionAmount = ${ethers.parseUnits(config.maxTransactionAmount!, parseInt(config.decimals))};
+
+    function setMaxHolderLimit(uint256 _limit) public onlyOwner {
+        maxHolderLimit = _limit;
+    }
+
+    function setMaxTransactionAmount(uint256 _amount) public onlyOwner {
+        maxTransactionAmount = _amount;
+    }`;
+    }
+
+    if (config.securityFunctions.includes('antibot')) {
+      contractCode += `
+    uint256 public tradingCooldown = ${config.tradingCooldown || '60'}; 
+    mapping(address => uint256) private _lastTradeTime;
+
+    function setTradingCooldown(uint256 _cooldown) public onlyOwner {
+        tradingCooldown = _cooldown;
+    }`;
+    }
+
+    if (config.securityFunctions.includes('blacklist')) {
+      contractCode += `
+    mapping(address => bool) private _blacklist;
+    event BlacklistUpdated(address indexed account, bool value);
+
+    function setBlacklist(address account, bool value) public onlyOwner {
+        _blacklist[account] = value;
+        emit BlacklistUpdated(account, value);
+    }
+
+    function isBlacklisted(address account) public view returns (bool) {
+        return _blacklist[account];
+    }`;
+    }
+
+    if (config.securityFunctions.includes('allowlist')) {
+      contractCode += `
+    mapping(address => bool) private _allowlist;
+    bool public allowlistEnabled = true;
+    event AllowlistUpdated(address indexed account, bool value);
+
+    function setAllowlist(address account, bool value) public onlyOwner {
+        _allowlist[account] = value;
+        emit AllowlistUpdated(account, value);
+    }
+
+    function setAllowlistEnabled(bool enabled) public onlyOwner {
+        allowlistEnabled = enabled;
+    }
+
+    function isAllowlisted(address account) public view returns (bool) {
+        return _allowlist[account];
+    }`;
+    }
+
+    if (config.securityFunctions.length > 0) {
+      contractCode += `
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    ) internal virtual override${config.standardFunctions.includes('cap') ? '(ERC20, ERC20Capped)' : ''} {
+        if (from == address(0) && to == msg.sender) {
+            super._update(from, to, value);
+            return;
+        }
+
+        if (_blacklist[from] || _blacklist[to]) {
+            revert("Blacklisted address");
+        }
+        
+        if (allowlistEnabled) {
+            if (!_allowlist[from] && !_allowlist[to]) {
+                revert("Address not allowlisted");
+            }
+        }
+
+        if (from != address(0) && to != address(0)) {
+            if (${config.securityFunctions.includes('antiwhale')}) {
+                if (value > maxTransactionAmount) {
+                    revert("Exceeds max transaction amount");
+                }
+                if (balanceOf(to) + value > maxHolderLimit) {
+                    revert("Exceeds max holder limit");
+                }
+            }
+            
+            if (${config.securityFunctions.includes('antibot')}) {
+                if (block.timestamp < _lastTradeTime[from] + tradingCooldown) {
+                    revert("Cooldown active");
+                }
+                _lastTradeTime[from] = block.timestamp;
+            }
+        }
+
         super._update(from, to, value);
     }`;
     }
